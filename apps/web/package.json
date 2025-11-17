@@ -1,0 +1,51 @@
+{
+  "name": "web",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3000 --turbopack",
+    "build": "",
+    "start": "next start",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^6.27.1",
+    "@convex-dev/agent": "^0.2.10",
+    "@hookform/resolvers": "^5.2.0",
+    "@react-pdf/renderer": "^4.3.1",
+    "@sentry/nextjs": "^9.42.1",
+    "@tanstack/react-table": "^8.21.3",
+    "@workspace/backend": "workspace:*",
+    "@workspace/i18n": "workspace:*",
+    "@workspace/ui": "workspace:*",
+    "ai": "^5.0.71",
+    "bowser": "^2.12.0",
+    "convex": "^1.27.5",
+    "countries-and-timezones": "^3.8.0",
+    "date-fns": "^4.1.0",
+    "framer-motion": "^12.23.24",
+    "jotai": "^2.12.5",
+    "lucide-react": "^0.475.0",
+    "next": "^15.2.3",
+    "next-intl": "^4.4.0",
+    "next-themes": "^0.4.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.61.1",
+    "remark": "^15.0.1",
+    "remark-gfm": "^4.0.1",
+    "sonner": "^2.0.6",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@workspace/eslint-config": "workspace:^",
+    "@workspace/typescript-config": "workspace:*",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "@workspace/backend",
+  "type": "module",
+  "scripts": {
+    "dev": "convex dev",
+    "setup": "convex dev --until-success"
+  },
+  "exports": {
+    "./convex": "./convex/*.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@workspace/typescript-config": "workspace:*",
+    "typescript": "5.7.3"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^2.0.52",
+    "@aws-sdk/client-secrets-manager": "^3.859.0",
+    "@clerk/backend": "^2.6.1",
+    "@convex-dev/agent": "^0.2.10",
+    "@convex-dev/agent-playground": "^0.0.19",
+    "@convex-dev/rag": "^0.5.3",
+    "@qdrant/qdrant-js": "^1.15.1",
+    "ai": "^5.0.71",
+    "convex": "^1.27.5",
+    "convex-helpers": "^0.1.104",
+    "openai": "^6.7.0",
+    "svix": "^1.73.0",
+    "zod": "^4.1.12"
+  }
+}

@@ -1,0 +1,22 @@
+# Ignore generated and heavy files in the convex app
+_generated/
+node_modules/
+.turbo/
+convex.lock
+*.log
+*.map
+.DS_Store
+.env
+.env.*
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*~
