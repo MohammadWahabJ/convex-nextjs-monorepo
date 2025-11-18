@@ -29,14 +29,17 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Step 3: Generate image tags
-      - name: Generate image tags
-        id: meta
-        run: |
-          # Create tags: dev-<run-number> and dev-<short-sha>
-          echo "TAG_RUN=dev-${{ github.run_number }}" >> $GITHUB_OUTPUT
-          echo "TAG_SHA=dev-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-          echo "TAG_LATEST=dev-latest" >> $GITHUB_OUTPUT
+      # Step 3: Generate semantic version tag
+      - name: Generate semantic version
+        id: version
+        uses: paulhatch/semantic-version@v5.4.0
+        with:
+          tag_prefix: "dev-v"
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
+          version_format: "${major}.${minor}.${patch}"
+          bump_each_commit: true
+          search_commit_body: false
 
       # Step 4: Create .env file for build (NEXT_PUBLIC_* variables needed during build)
       - name: Create .env file for build
@@ -76,10 +79,7 @@ jobs:
           context: .
           file: ./apps/web/Dockerfile
           push: true
-          tags: |
-            ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_RUN }}
-            ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_SHA }}
-            ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_LATEST }}
+          tags: ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -88,11 +88,14 @@ jobs:
         run: |
           echo "🚀 Docker image built and pushed successfully!"
           echo ""
-          echo "📦 Image tags pushed:"
-          echo "  - ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_RUN }}"
-          echo "  - ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_SHA }}"
-          echo "  - ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_LATEST }}"
+          echo "📦 Image tag: ${{ steps.version.outputs.version_tag }}"
+          echo "📍 Full image path: ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version_tag }}"
+          echo ""
+          echo "📊 Version details:"
+          echo "  - Major: ${{ steps.version.outputs.major }}"
+          echo "  - Minor: ${{ steps.version.outputs.minor }}"
+          echo "  - Patch: ${{ steps.version.outputs.patch }}"
           echo ""
           echo "🔧 To pull and run this image:"
-          echo "  docker pull ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_RUN }}"
-          echo "  docker run -p 3000:3000 ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_RUN }}"
+          echo "  docker pull ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version_tag }}"
+          echo "  docker run -p 3000:3000 ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version_tag }}"
