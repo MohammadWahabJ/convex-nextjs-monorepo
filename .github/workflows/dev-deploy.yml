@@ -1,0 +1,98 @@
+name: Build and Deploy to Dev
+
+# Trigger: Push to dev branch
+on:
+  push:
+    branches:
+      - dev
+
+# Use dev environment (accesses dev environment secrets and variables)
+env:
+  HARBOR_REGISTRY: registry.ki2.at
+  HARBOR_PROJECT: monorepo-web-app
+  IMAGE_NAME: web-app
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+
+    # Use GitHub dev environment (to access dev-specific secrets and variables)
+    environment: dev
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Docker Buildx (for better caching and multi-platform builds)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Step 3: Generate image tags
+      - name: Generate image tags
+        id: meta
+        run: |
+          # Create tags: dev-<run-number> and dev-<short-sha>
+          echo "TAG_RUN=dev-${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "TAG_SHA=dev-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          echo "TAG_LATEST=dev-latest" >> $GITHUB_OUTPUT
+
+      # Step 4: Create .env file for build (NEXT_PUBLIC_* variables needed during build)
+      - name: Create .env file for build
+        run: |
+          cat > .env << EOF
+          # From dev environment variables
+          NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_CLERK_FRONTEND_API_URL=${{ vars.NEXT_PUBLIC_CLERK_FRONTEND_API_URL }}
+          NEXT_PUBLIC_CONVEX_URL=${{ vars.NEXT_PUBLIC_CONVEX_URL }}
+
+          # From repository variables
+          NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=${{ vars.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL }}
+          NEXT_PUBLIC_CLERK_SIGN_IN_URL=${{ vars.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
+          NEXT_PUBLIC_CLERK_SIGN_UP_URL=${{ vars.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
+          NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=${{ vars.NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL }}
+          NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=${{ vars.NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL }}
+
+          # From dev environment secrets
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}
+          EOF
+
+          echo "✅ .env file created successfully"
+
+      # Step 5: Login to Harbor Registry
+      - name: Login to Harbor Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.HARBOR_REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      # Step 6: Build and push Docker image
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_RUN }}
+            ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_SHA }}
+            ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_LATEST }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Step 7: Print summary
+      - name: Print deployment summary
+        run: |
+          echo "🚀 Docker image built and pushed successfully!"
+          echo ""
+          echo "📦 Image tags pushed:"
+          echo "  - ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_RUN }}"
+          echo "  - ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_SHA }}"
+          echo "  - ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_LATEST }}"
+          echo ""
+          echo "🔧 To pull and run this image:"
+          echo "  docker pull ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_RUN }}"
+          echo "  docker run -p 3000:3000 ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_RUN }}"
