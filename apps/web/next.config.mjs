@@ -1,4 +1,6 @@
-import createNextIntlPlugin from '@workspace/i18n/plugin';
+// Import directly from next-intl to avoid TypeScript compilation issues
+// The @workspace/i18n/plugin just re-exports this, so this is equivalent
+import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin();
 

@@ -1,0 +1,51 @@
+# .dockerignore (place at root)
+
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+.next
+.turbo
+dist
+build
+out
+
+# Testing
+coverage
+.nyc_output
+
+# Environment variables (keep .env for build-time NEXT_PUBLIC_* variables)
+# .env
+.env.local
+.env.*.local
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+docs
+
+# CI/CD
+.github
+.gitlab-ci.yml
