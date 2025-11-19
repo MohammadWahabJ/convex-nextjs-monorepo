@@ -1,0 +1,116 @@
+name: Build and Deploy Admin App
+
+# Trigger: Push to test branch
+on:
+  push:
+    branches:
+      - test
+
+# Registry configuration
+env:
+  HARBOR_REGISTRY: registry.ki2.at
+  HARBOR_PROJECT: monorepo-admin-app
+  IMAGE_NAME: admin-app
+
+jobs:
+  build-and-push:
+    name: Build and Push Admin Docker Image
+    runs-on: ubuntu-latest
+
+    # Use GitHub admin environment (to access admin-specific secrets and variables)
+    environment: admin
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for semantic versioning
+
+      # Step 2: Set up Docker Buildx (for better caching and multi-platform builds)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Step 3: Generate semantic version based on conventional commits
+      - name: Generate semantic version
+        id: version
+        uses: paulhatch/semantic-version@v5.4.0
+        with:
+          tag_prefix: "admin-v"
+          # MAJOR version: Look for BREAKING CHANGE in commit body or ! after type
+          major_pattern: "(BREAKING CHANGE|feat!|fix!)"
+          # MINOR version: Look for feat: commits
+          minor_pattern: "feat:"
+          # VERSION format
+          version_format: "${major}.${minor}.${patch}"
+          # Bump version on each commit
+          bump_each_commit: true
+          # Search in commit body for BREAKING CHANGE
+          search_commit_body: true
+
+      # Step 4: Create .env.admin file for build (NEXT_PUBLIC_* variables needed during build)
+      - name: Create .env.admin file for build
+        run: |
+          cat > .env.admin << EOF
+          # From admin environment variables
+          NEXT_PUBLIC_CONVEX_URL=${{ vars.NEXT_PUBLIC_CONVEX_URL }}
+          NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_CLERK_FRONTEND_API_URL=${{ vars.NEXT_PUBLIC_CLERK_FRONTEND_API_URL }}
+          NEXT_PUBLIC_CLERK_SIGN_IN_URL=${{ vars.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
+          NEXT_PUBLIC_CLERK_SIGN_UP_URL=${{ vars.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
+          NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=${{ vars.NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL }}
+          NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=${{ vars.NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL }}
+
+          # From admin environment secrets
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}
+          EOF
+
+          echo "✅ .env.admin file created successfully"
+
+      # Step 5: Login to Harbor Registry
+      - name: Login to Harbor Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.HARBOR_REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      # Step 6: Build and push Docker image
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/admin/Dockerfile
+          push: true
+          tags: |
+            ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version_tag }}
+            ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Step 7: Print summary
+      - name: Print deployment summary
+        run: |
+          echo "🚀 Admin app Docker image built and pushed successfully!"
+          echo ""
+          echo "📦 Image tag: ${{ steps.version.outputs.version_tag }}"
+          echo "📍 Full image path: ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version_tag }}"
+          echo ""
+          echo "📊 Version details:"
+          echo "  - Major: ${{ steps.version.outputs.major }}"
+          echo "  - Minor: ${{ steps.version.outputs.minor }}"
+          echo "  - Patch: ${{ steps.version.outputs.patch }}"
+          echo ""
+          echo "🔖 Tags pushed:"
+          echo "  - ${{ steps.version.outputs.version_tag }}"
+          echo "  - latest"
+          echo ""
+          echo "🔧 To pull and run this image:"
+          echo "  docker pull ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version_tag }}"
+          echo "  docker run -p 3001:3001 ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version_tag }}"
+          echo ""
+          echo "💡 Semantic versioning based on commit messages:"
+          echo "  - feat: new feature → bumps MINOR (1.0.0 → 1.1.0)"
+          echo "  - fix: bug fix → bumps PATCH (1.0.0 → 1.0.1)"
+          echo "  - feat! or BREAKING CHANGE: → bumps MAJOR (1.0.0 → 2.0.0)"
