@@ -1,11 +1,10 @@
 name: Build and Deploy Admin App
 
-# Trigger: Push to test branch or manual trigger
+# Trigger: Push to test branch
 on:
   push:
     branches:
       - test
-  workflow_dispatch:  # Allows manual triggering from GitHub UI
 
 # Registry configuration
 env:
